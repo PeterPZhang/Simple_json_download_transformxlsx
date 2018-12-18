@@ -1,0 +1,2 @@
+# Simple_json_download_transformxlsx
+爬虫来的灵感，通过Charles请求app数据json存储excel并下载商品图片至本地。小工具还有优化的空间，未完待续。
