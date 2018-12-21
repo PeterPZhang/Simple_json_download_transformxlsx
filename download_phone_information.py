@@ -58,17 +58,21 @@ def generate_excel(row, col, expenses):
     money_format = workbook.add_format({'num_format': '$#,##0'})  # bold：加粗，num_format:数字格式
     date_format = workbook.add_format({'num_format': 'mmmm d yyyy'})
     worksheet.set_column(1, 1, 15)  # 将二行二列设置宽度为15(从0开始)
-    worksheet.write('A1', '手机名称', bold_format)  # 用符号标记位置，例如：A列1行
-    worksheet.write('B1', '手机图片', bold_format)
-    worksheet.write('C1', '最高价', bold_format)
-    worksheet.write('D1', '品牌ID', bold_format)
-    worksheet.write('E1', '本地图片地址', bold_format)
+    worksheet.write('A1', '手机id', bold_format)  # 用符号标记位置，例如：A列1行
+    worksheet.write('B1', '品牌', bold_format)
+    worksheet.write('C1', '手机名称', bold_format)
+    worksheet.write('D1', '手机图片URL', bold_format)
+    worksheet.write('E1', '最高价', bold_format)
+    worksheet.write('F1', '品牌id', bold_format)
+    worksheet.write('G1', '存储本地图片名称', bold_format)
     for item in expenses:  # 使用write_string方法，指定数据格式写入数据
-        worksheet.write_string(row, col, str(item['phone_name']))
-        worksheet.write_string(row, col + 1, item['phone_img'])
-        worksheet.write_string(row, col + 2, str(item['top_price']))
-        worksheet.write_string(row, col + 3, str(item['brand_id']))
-        worksheet.write_string(row, col + 4, item['img_path'])
+        worksheet.write_string(row, col, str(item['phone_id']))
+        worksheet.write_string(row, col + 1, str(item['brand']))
+        worksheet.write_string(row, col + 2, str(item['phone_name']))
+        worksheet.write_string(row, col + 3, str(item['phone_img']))
+        worksheet.write_string(row, col + 4, str(item['top_price']))
+        worksheet.write_string(row, col + 5, str(item['brand_id']))
+        worksheet.write_string(row, col + 6, str(item['img_path']))
         row += 1
     workbook.close()
     return row
@@ -81,9 +85,12 @@ def format_name(phone_name):
     :param phone_name:
     :return:
     """
-    phone_name = ''.join(phone_name.split())  # 删除空格
+    full_phone_name = ''.join(phone_name.split())  # 删除空格
+    brand = phone_name.split()[0]
+    phone_name = ''.join(phone_name.split()[1:])
     format_phone_name = phone_name.replace('/', '、')  # 删除'/'以'、'代替（否则将认为是路径处理）
-    return format_phone_name
+    format_full_phone_name = full_phone_name.replace('/', '、')  # 删除'/'以'、'代替（否则将认为是路径处理）
+    return brand, format_phone_name, format_full_phone_name
 
 
 # 根据url下载手机图片
@@ -97,11 +104,13 @@ def img_download(img_name, url):
     headers = {
         "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36"}
     r = requests.get(url, stream=True, headers=headers)
-    with open('./image/%s.png' % img_name, 'wb') as f:
-        print('%s.png 正在下载......' % img_name)
+    filename = os.path.basename(url)
+    with open('./image/%s' % filename, 'wb') as f:
+        print('%s 正在下载......' % img_name)
         for chunk in r.iter_content(chunk_size=32):
             f.write(chunk)
-    print('%s.png 下载成功！' % img_name)
+    print('%s 下载成功！' % filename)
+    return filename
 
 
 # 读取json
@@ -116,18 +125,21 @@ def load_json(file):
     data_list = file_data['data']
     phone_list = []
     for item in data_list:
+        phone_id = item['id']
         phone_name = item['name']
         phone_img = item['imgUrl']
         top_price = item['topPrice']
         brand_id = item['brandId']
-        phone_name = format_name(phone_name)  # 格式化手机名称为正确格式
-        img_download(phone_name, phone_img)  # 根据json中的图片url下载图片到指定位置
+        brand, phone_name, format_full_phone_name = format_name(phone_name)  # 格式化手机名称为正确格式
+        file_name = img_download(format_full_phone_name, phone_img)  # 根据json中的图片url下载图片到指定位置
         phone_dict = {
+            "phone_id": phone_id,
+            "brand": brand,
             "phone_name": phone_name,
             "phone_img": phone_img,
             "top_price": top_price,
             "brand_id": brand_id,
-            "img_path": os.getcwd() + '/image/' + phone_name + '.png'
+            "img_path": file_name
         }
         phone_list.append(phone_dict)
     return phone_list
